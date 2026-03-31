@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background-color: #f8f7f4;
+    color: #1a1a1a;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Playfair Display', serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-brand-500 hover:bg-brand-600 text-white font-semibold px-6 py-3 rounded-xl 
+           transition-all duration-200 shadow-brand hover:shadow-lg hover:-translate-y-0.5 
+           active:translate-y-0 active:shadow-none;
+  }
+
+  .btn-outline {
+    @apply border-2 border-brand-500 text-brand-500 hover:bg-brand-500 hover:text-white 
+           font-semibold px-6 py-3 rounded-xl transition-all duration-200;
+  }
+
+  .btn-ghost {
+    @apply text-gray-600 hover:text-brand-500 hover:bg-brand-50 font-medium px-4 py-2 
+           rounded-lg transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-white rounded-2xl shadow-card hover:shadow-card-hover transition-all duration-300;
+  }
+
+  .input-field {
+    @apply w-full border border-gray-200 rounded-xl px-4 py-3 text-sm 
+           focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent
+           placeholder-gray-400 transition-all duration-200 bg-white;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-boys { @apply bg-blue-100 text-blue-700; }
+  .badge-girls { @apply bg-pink-100 text-pink-700; }
+  .badge-coliving { @apply bg-purple-100 text-purple-700; }
+  .badge-verified { @apply bg-green-100 text-green-700; }
+
+  .amenity-chip {
+    @apply flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 rounded-lg text-xs 
+           font-medium text-gray-600 border border-gray-100;
+  }
+
+  .section-title {
+    @apply font-display text-3xl font-bold text-gray-900;
+  }
+
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+/* Swiper overrides */
+.swiper-pagination-bullet-active { background: #eb5213 !important; }
+.swiper-button-next, .swiper-button-prev { color: #eb5213 !important; }
+
+/* Page transition */
+.page-enter { opacity: 0; transform: translateY(12px); }
+.page-enter-active { opacity: 1; transform: translateY(0); transition: all 0.3s ease; }
