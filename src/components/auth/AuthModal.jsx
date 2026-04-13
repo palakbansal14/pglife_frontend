@@ -1,14 +1,25 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Phone, Shield, ChevronRight, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
+const COUNTRY_CODES = [
+  { code: '+91', country: 'IN', flag: '🇮🇳' },
+  { code: '+1',  country: 'US', flag: '🇺🇸' },
+  { code: '+44', country: 'GB', flag: '🇬🇧' },
+  { code: '+61', country: 'AU', flag: '🇦🇺' },
+  { code: '+971', country: 'AE', flag: '🇦🇪' },
+  { code: '+65', country: 'SG', flag: '🇸🇬' },
+  { code: '+60', country: 'MY', flag: '🇲🇾' },
+];
+
 export default function AuthModal({ open, onClose, defaultRole = null }) {
   // Steps: 1=phone, 2=signup(new user), 3=otp, 4=done
   const [step, setStep] = useState(1);
   const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState(defaultRole || 'seeker');
@@ -16,7 +27,16 @@ export default function AuthModal({ open, onClose, defaultRole = null }) {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
-  const reset = () => { setStep(1); setPhone(''); setOtp(''); setName(''); setRole(defaultRole || 'seeker'); setIsNewUser(false); };
+  // Sync role when modal opens with a defaultRole (e.g. "List Your PG" button)
+  useEffect(() => {
+    if (open) setRole(defaultRole || 'seeker');
+  }, [open, defaultRole]);
+
+  const phoneError = phone.length > 0 && phone.length !== 10
+    ? phone.length < 10 ? 'Number too short (10 digits required)' : 'Number too long (10 digits required)'
+    : null;
+
+  const reset = () => { setStep(1); setPhone(''); setCountryCode('+91'); setOtp(''); setName(''); setRole(defaultRole || 'seeker'); setIsNewUser(false); };
   const close = () => { reset(); onClose(); };
 
   // Step 1: Check if user exists
@@ -40,9 +60,8 @@ export default function AuthModal({ open, onClose, defaultRole = null }) {
   const sendOTP = async () => {
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/send-otp', { phone });
-      toast.success('OTP sent successfully');
-      if (data.otp) toast(`DEV: OTP is ${data.otp}`, { icon: '🔑', duration: 15000 });
+      await api.post('/auth/send-otp', { phone, countryCode });
+      toast.success('OTP sent to your mobile number');
       setStep(3);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send OTP');
@@ -60,7 +79,7 @@ export default function AuthModal({ open, onClose, defaultRole = null }) {
     if (otp.length !== 6) return toast.error('Enter 6-digit OTP');
     setLoading(true);
     try {
-      const payload = { phone, otp, name: isNewUser ? name : undefined, role: isNewUser ? role : undefined };
+      const payload = { phone, otp, countryCode, name: isNewUser ? name : undefined, role };
       const { data } = await api.post('/auth/verify-otp', payload);
       login(data.token, data.user);
       toast.success(`Welcome${isNewUser ? '' : ' back'}, ${data.user.name}!`);
@@ -96,7 +115,7 @@ export default function AuthModal({ open, onClose, defaultRole = null }) {
             <p className="text-white/75 text-sm">
               {step === 1 ? 'Enter your mobile number to continue' :
                step === 2 ? 'Tell us a little about yourself' :
-               `OTP sent to +91 ${phone}`}
+               `OTP sent to ${countryCode} ${phone}`}
             </p>
           </div>
 
@@ -109,16 +128,29 @@ export default function AuthModal({ open, onClose, defaultRole = null }) {
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">Mobile Number</label>
                   <div className="flex gap-2">
-                    <div className="px-3 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-500">+91</div>
+                    <select
+                      value={countryCode}
+                      onChange={e => setCountryCode(e.target.value)}
+                      className="px-2 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 cursor-pointer focus:outline-none focus:border-brand-400"
+                    >
+                      {COUNTRY_CODES.map(c => (
+                        <option key={c.code} value={c.code}>{c.flag} {c.code}</option>
+                      ))}
+                    </select>
                     <input
                       type="tel" maxLength={10} value={phone}
                       onChange={e => setPhone(e.target.value.replace(/\D/g, ''))}
                       onKeyDown={e => e.key === 'Enter' && checkUser()}
                       placeholder="9876543210"
-                      className="input-field flex-1"
+                      className={`input-field flex-1 ${phoneError ? 'border-red-400 focus:border-red-400' : ''}`}
                       autoFocus
                     />
                   </div>
+                  {phoneError && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                      <span>⚠</span> {phoneError}
+                    </p>
+                  )}
                 </div>
                 <button onClick={checkUser} disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
                   {loading ? <Loader2 size={18} className="animate-spin" /> : <>Continue <ChevronRight size={16} /></>}

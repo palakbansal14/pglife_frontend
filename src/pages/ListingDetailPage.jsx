@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { MapPin, Heart, Star, Wifi, Wind, UtensilsCrossed, Car, Dumbbell, ShieldCheck, Loader2, Phone, ChevronLeft, Users, Zap, Tv, Thermometer, Shirt, Camera } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import {
+  MapPin, Heart, Star, Wifi, Wind, UtensilsCrossed, Car, Dumbbell,
+  ShieldCheck, Loader2, Phone, ChevronLeft, Users, Zap, Tv,
+  Thermometer, Shirt, Camera, Lock, Coins, CheckCircle2,
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -15,25 +19,28 @@ const AMENITY_ICONS = {
   hotWater: { icon: Thermometer, label: 'Hot Water' }, laundry: { icon: Shirt, label: 'Laundry' },
 };
 
-const GENDER_COLOR = { Boys: 'badge-boys', Girls: 'badge-girls', Coliving: 'badge-coliving', Any: 'bg-gray-100 text-gray-600' };
+const GENDER_COLOR = {
+  Boys: 'badge-boys', Girls: 'badge-girls', Coliving: 'badge-coliving', Any: 'bg-gray-100 text-gray-600',
+};
 
 export default function ListingDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
   const [saved, setSaved] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
-  const [showPhone, setShowPhone] = useState(false);
-  const { user, isLoggedIn } = useAuth();
+  const [unlocking, setUnlocking] = useState(false);
+  const { user, isLoggedIn, refreshUser } = useAuth();
 
-  useEffect(() => {
+  const fetchListing = () =>
     api.get(`/listings/${id}`).then(r => {
       setListing(r.data.listing);
-      // Check wishlist
       if (user?.wishlist?.includes(id)) setSaved(true);
     }).catch(() => toast.error('Listing not found')).finally(() => setLoading(false));
-  }, [id]);
+
+  useEffect(() => { fetchListing(); }, [id]);
 
   const toggleSave = async () => {
     if (!isLoggedIn) return toast.error('Please login to save listings');
@@ -46,6 +53,29 @@ export default function ListingDetailPage() {
     finally { setSaveLoading(false); }
   };
 
+  const handleUnlock = async () => {
+    if (!isLoggedIn) {
+      toast.error('Please login to unlock contact details');
+      return;
+    }
+    if ((user?.credits ?? 0) < (listing?.unlockCost ?? 2)) {
+      toast.error(`You need ${listing?.unlockCost ?? 2} credits. Buy more credits to continue.`);
+      return;
+    }
+    setUnlocking(true);
+    try {
+      const { data } = await api.post(`/listings/${id}/unlock`);
+      toast.success(data.message || 'Unlocked! You can now see full details.');
+      // Refresh credits in context + re-fetch listing to get address & phone
+      await Promise.all([refreshUser(), fetchListing()]);
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Failed to unlock';
+      toast.error(msg);
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <Loader2 size={36} className="animate-spin text-brand-400" />
@@ -55,6 +85,9 @@ export default function ListingDetailPage() {
 
   const images = listing.images?.length ? listing.images : [{ url: 'https://placehold.co/800x500/f5f5f0/ccc?text=No+Image' }];
   const activeAmenities = Object.entries(listing.amenities || {}).filter(([, v]) => v);
+  const isLocked = listing.isLocked ?? true;
+  const unlockCost = listing.unlockCost ?? 2;
+  const userCredits = user?.credits ?? 0;
 
   return (
     <div className="py-8">
@@ -64,8 +97,12 @@ export default function ListingDetailPage() {
           <Link to="/listings" className="hover:text-brand-500 flex items-center gap-1"><ChevronLeft size={14} /> Listings</Link>
           <span>/</span>
           <Link to={`/listings?city=${listing.city}`} className="hover:text-brand-500">{listing.city}</Link>
-          <span>/</span>
-          <span className="text-gray-700 font-medium truncate">{listing.title}</span>
+          {!isLocked && (
+            <>
+              <span>/</span>
+              <span className="text-gray-700 font-medium truncate">{listing.title}</span>
+            </>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -95,20 +132,39 @@ export default function ListingDetailPage() {
 
             {/* Title & Basic Info */}
             <div>
-              <div className="flex flex-wrap gap-2 mb-3">
-                <span className={`badge ${GENDER_COLOR[listing.genderPreference]}`}>
-                  <Users size={11} /> {listing.genderPreference}
-                </span>
-                <span className="badge bg-gray-100 text-gray-600">{listing.pgType}</span>
-                {listing.sharingType?.map(s => (
-                  <span key={s} className="badge bg-blue-50 text-blue-600">{s} Sharing</span>
-                ))}
+              {!isLocked && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <span className={`badge ${GENDER_COLOR[listing.genderPreference]}`}>
+                    <Users size={11} /> {listing.genderPreference}
+                  </span>
+                  <span className="badge bg-gray-100 text-gray-600">{listing.pgType}</span>
+                  {listing.sharingType?.map(s => (
+                    <span key={s} className="badge bg-blue-50 text-blue-600">{s} Sharing</span>
+                  ))}
+                </div>
+              )}
+              {/* Title – hidden when locked */}
+              {isLocked ? (
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-8 w-56 bg-gray-200 rounded-lg animate-pulse" />
+                  <span className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-600 border border-amber-200 rounded-full px-2 py-0.5">
+                    <Lock size={10} /> Unlock to see details
+                  </span>
+                </div>
+              ) : (
+                <h1 className="font-display text-3xl font-bold text-gray-900 mb-2">{listing.title}</h1>
+              )}
+
+              {/* Location – only city when locked, full when unlocked */}
+              <div className="flex items-start gap-1.5 text-gray-500 mb-4">
+                <MapPin size={16} className="text-brand-400 mt-0.5 flex-shrink-0" />
+                {isLocked ? (
+                  <span className="text-gray-500">{listing.city}</span>
+                ) : (
+                  <span>{listing.address}, {listing.locality}, {listing.city}</span>
+                )}
               </div>
-              <h1 className="font-display text-3xl font-bold text-gray-900 mb-2">{listing.title}</h1>
-              <div className="flex items-center gap-1.5 text-gray-500 mb-4">
-                <MapPin size={16} className="text-brand-400" />
-                <span>{listing.address}, {listing.locality}, {listing.city}</span>
-              </div>
+
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-1">
                   <Star size={16} className="text-amber-400 fill-amber-400" />
@@ -180,7 +236,7 @@ export default function ListingDetailPage() {
             <ReviewSection listingId={id} />
           </div>
 
-          {/* Right: Pricing + Owner card */}
+          {/* Right: Pricing + Contact card */}
           <div className="space-y-4">
             {/* Price Card */}
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="card p-5 sticky top-20">
@@ -206,18 +262,55 @@ export default function ListingDetailPage() {
                 </div>
               </div>
 
-              {/* Actions */}
+              {/* Contact / Unlock Section */}
               <div className="space-y-3">
-                {showPhone ? (
-                  <a href={`tel:${listing.owner?.phone}`} className="btn-primary w-full flex items-center justify-center gap-2">
-                    <Phone size={16} /> +91 {listing.owner?.phone}
-                  </a>
+                {isLocked ? (
+                  /* ── LOCKED STATE ── */
+                  <div className="rounded-xl border-2 border-dashed border-amber-200 bg-amber-50 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Lock size={16} className="text-amber-500" />
+                      <span className="text-sm font-semibold text-amber-700">Contact details are locked</span>
+                    </div>
+                    <p className="text-xs text-amber-600 leading-relaxed">
+                      Unlock to see the owner's phone number and full address.
+                    </p>
+                    {isLoggedIn && (
+                      <div className="flex items-center justify-between text-xs text-amber-600">
+                        <span>Your credits: <strong>{userCredits}</strong></span>
+                        <span>Costs: <strong>{unlockCost} credits</strong></span>
+                      </div>
+                    )}
+                    <button
+                      onClick={handleUnlock}
+                      disabled={unlocking}
+                      className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 px-4 rounded-xl transition-colors disabled:opacity-60"
+                    >
+                      {unlocking
+                        ? <Loader2 size={16} className="animate-spin" />
+                        : <><Coins size={16} /> {isLoggedIn ? `Unlock Contact · ${unlockCost} Credits` : 'Login to Unlock'}</>
+                      }
+                    </button>
+                    {isLoggedIn && userCredits < unlockCost && (
+                      <p className="text-xs text-center text-red-500">
+                        Not enough credits. Please buy more.
+                      </p>
+                    )}
+                  </div>
                 ) : (
-                  <button onClick={() => { if (!isLoggedIn) { toast.error('Login to view contact'); return; } setShowPhone(true); }}
-                    className="btn-primary w-full flex items-center justify-center gap-2">
-                    <Phone size={16} /> Show Contact Number
-                  </button>
+                  /* ── UNLOCKED STATE ── */
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5 text-xs text-green-600 font-medium mb-1">
+                      <CheckCircle2 size={14} /> Contact Unlocked
+                    </div>
+                    <a
+                      href={`tel:${listing.owner?.phone}`}
+                      className="btn-primary w-full flex items-center justify-center gap-2"
+                    >
+                      <Phone size={16} /> +91 {listing.owner?.phone}
+                    </a>
+                  </div>
                 )}
+
                 <button onClick={toggleSave} disabled={saveLoading}
                   className={`w-full flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold border-2 transition-all ${saved ? 'border-brand-500 bg-brand-50 text-brand-600' : 'border-gray-200 text-gray-600 hover:border-brand-400'}`}>
                   <Heart size={16} fill={saved ? 'currentColor' : 'none'} />

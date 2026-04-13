@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, Heart, User, LayoutDashboard, LogOut, ChevronDown, Home } from 'lucide-react';
+import { Menu, X, Heart, User, LayoutDashboard, LogOut, ChevronDown, Home, Coins, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import AuthModal from '../auth/AuthModal';
 
@@ -85,6 +85,9 @@ export default function Navbar() {
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isOwner ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
                         {isOwner ? 'Owner' : 'Seeker'}
                       </span>
+                      <span className="flex items-center gap-0.5 text-xs bg-amber-50 text-amber-600 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">
+                        <Coins size={11} /> {user.credits ?? 0}
+                      </span>
                       <ChevronDown size={14} className={`text-gray-500 transition-transform ${dropOpen ? 'rotate-180' : ''}`} />
                     </button>
                     {dropOpen && (
@@ -94,6 +97,10 @@ export default function Navbar() {
                         </Link>
                         <Link to="/wishlist" className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 hover:text-brand-500 transition-colors" onClick={() => setDropOpen(false)}>
                           <Heart size={15} /> Saved PGs
+                        </Link>
+                        <Link to="/buy-credits" className="flex items-center justify-between px-4 py-2.5 text-sm text-amber-600 hover:bg-amber-50 transition-colors" onClick={() => setDropOpen(false)}>
+                          <span className="flex items-center gap-2"><ShoppingCart size={15} /> Buy Credits</span>
+                          <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">{user.credits ?? 0} left</span>
                         </Link>
                         <hr className="my-1 border-gray-100" />
                         <button onClick={handleLogout} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors">

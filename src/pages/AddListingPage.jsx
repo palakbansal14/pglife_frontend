@@ -1,15 +1,19 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Loader2, Upload, X, Plus } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Loader2, Upload, X, Plus, Coins, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const CITIES = ['Noida', 'Delhi', 'Gurgaon', 'Bangalore'];
 const AMENITIES = ['wifi', 'ac', 'food', 'laundry', 'parking', 'gym', 'cctv', 'housekeeping', 'powerBackup', 'hotWater', 'tv', 'fridge'];
 const AMENITY_LABELS = { wifi:'WiFi', ac:'AC', food:'Food', laundry:'Laundry', parking:'Parking', gym:'Gym', cctv:'CCTV', housekeeping:'Housekeeping', powerBackup:'Power Backup', hotWater:'Hot Water', tv:'TV', fridge:'Fridge' };
 
+const LISTING_COST = 15;
+
 export default function AddListingPage() {
   const navigate = useNavigate();
+  const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState([]);
   const [previews, setPreviews] = useState([]);
@@ -40,9 +44,15 @@ export default function AddListingPage() {
 
   const addRule = () => { if (rule.trim()) { set('houseRules', [...form.houseRules, rule.trim()]); setRule(''); } };
 
+  const userCredits = user?.credits ?? 0;
+  const canPost = userCredits >= LISTING_COST;
+
   const submit = async () => {
     if (!form.title || !form.city || !form.monthlyRent || !form.genderPreference) {
       return toast.error('Fill all required fields');
+    }
+    if (!canPost) {
+      return toast.error(`You need ${LISTING_COST} credits to post a listing. You have ${userCredits}.`);
     }
     setLoading(true);
     try {
@@ -55,6 +65,7 @@ export default function AddListingPage() {
       images.forEach(img => fd.append('images', img));
       await api.post('/listings', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       toast.success('PG Listed successfully! 🎉');
+      await refreshUser(); // update credits in navbar
       navigate('/dashboard');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create listing');
@@ -68,6 +79,30 @@ export default function AddListingPage() {
           <h1 className="font-display text-3xl font-bold text-gray-900">List Your PG</h1>
           <p className="text-gray-500 mt-1">Fill in the details to list your property. Fields marked * are required.</p>
         </div>
+
+        {/* Credit cost banner */}
+        {canPost ? (
+          <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-6">
+            <Coins size={18} className="text-amber-500 flex-shrink-0" />
+            <div className="text-sm">
+              <span className="font-semibold text-amber-700">Posting costs {LISTING_COST} credits.</span>
+              <span className="text-amber-600"> You have <strong>{userCredits}</strong> credits — you're good to go!</span>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-6">
+            <div className="flex items-center gap-3">
+              <AlertTriangle size={18} className="text-red-500 flex-shrink-0" />
+              <div className="text-sm">
+                <span className="font-semibold text-red-700">Not enough credits.</span>
+                <span className="text-red-600"> Posting costs {LISTING_COST} credits but you only have <strong>{userCredits}</strong>.</span>
+              </div>
+            </div>
+            <Link to="/buy-credits" className="flex-shrink-0 flex items-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
+              <Coins size={14} /> Buy Credits
+            </Link>
+          </div>
+        )}
 
         <div className="space-y-6">
           {/* Basic Info */}
@@ -210,8 +245,11 @@ export default function AddListingPage() {
           {/* Submit */}
           <div className="flex gap-4">
             <button onClick={() => navigate('/dashboard')} className="btn-ghost flex-1">Cancel</button>
-            <button onClick={submit} disabled={loading} className="btn-primary flex-1 flex items-center justify-center gap-2">
-              {loading ? <Loader2 size={18} className="animate-spin" /> : 'Publish Listing 🚀'}
+            <button onClick={submit} disabled={loading || !canPost} className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+              {loading
+                ? <Loader2 size={18} className="animate-spin" />
+                : <><Coins size={16} /> Publish Listing · {LISTING_COST} Credits</>
+              }
             </button>
           </div>
         </div>

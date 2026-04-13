@@ -11,6 +11,7 @@ import AddListingPage from './pages/AddListingPage';
 import EditListingPage from './pages/EditListingPage';
 import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
+import BuyCreditsPage from './pages/BuyCreditsPage';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Chatbot from './components/chatbot/Chatbot';
 
@@ -35,6 +36,7 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/wishlist" element={<WishlistPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/buy-credits" element={<BuyCreditsPage />} />
             </Route>
 
             <Route element={<ProtectedRoute ownerOnly />}>
