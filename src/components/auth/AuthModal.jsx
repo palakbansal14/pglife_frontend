@@ -25,6 +25,7 @@ export default function AuthModal({ open, onClose, defaultRole = null }) {
   const [role, setRole] = useState(defaultRole || 'seeker');
   const [isNewUser, setIsNewUser] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [slowNetwork, setSlowNetwork] = useState(false);
   const { login } = useAuth();
 
   // Sync role when modal opens with a defaultRole (e.g. "List Your PG" button)
@@ -36,13 +37,15 @@ export default function AuthModal({ open, onClose, defaultRole = null }) {
     ? phone.length < 10 ? 'Number too short (10 digits required)' : 'Number too long (10 digits required)'
     : null;
 
-  const reset = () => { setStep(1); setPhone(''); setCountryCode('+91'); setOtp(''); setName(''); setRole(defaultRole || 'seeker'); setIsNewUser(false); };
+  const reset = () => { setStep(1); setPhone(''); setCountryCode('+91'); setOtp(''); setName(''); setRole(defaultRole || 'seeker'); setIsNewUser(false); setSlowNetwork(false); };
   const close = () => { reset(); onClose(); };
 
   // Step 1: Check if user exists
   const checkUser = async () => {
     if (!/^\d{10}$/.test(phone)) return toast.error('Enter valid 10-digit number');
     setLoading(true);
+    setSlowNetwork(false);
+    const slowTimer = setTimeout(() => setSlowNetwork(true), 4000);
     try {
       const { data } = await api.post('/auth/check-user', { phone });
       setIsNewUser(data.isNewUser);
@@ -53,11 +56,15 @@ export default function AuthModal({ open, onClose, defaultRole = null }) {
       }
     } catch (err) {
       if (err.code === 'ECONNABORTED') {
-        toast.error('Server is waking up, please try again in a moment');
+        toast.error('Server took too long. Please try again.');
       } else {
         toast.error(err.response?.data?.message || 'Something went wrong');
       }
-    } finally { setLoading(false); }
+    } finally {
+      clearTimeout(slowTimer);
+      setSlowNetwork(false);
+      setLoading(false);
+    }
   };
 
   // Send OTP
@@ -157,7 +164,12 @@ export default function AuthModal({ open, onClose, defaultRole = null }) {
                   )}
                 </div>
                 <button onClick={checkUser} disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
-                  {loading ? <Loader2 size={18} className="animate-spin" /> : <>Continue <ChevronRight size={16} /></>}
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 size={18} className="animate-spin" />
+                      {slowNetwork ? 'Server waking up, please wait...' : 'Please wait...'}
+                    </span>
+                  ) : <>Continue <ChevronRight size={16} /></>}
                 </button>
                 <p className="text-xs text-center text-gray-400">By continuing, you agree to our Terms & Privacy Policy</p>
               </div>
