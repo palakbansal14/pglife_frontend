@@ -52,7 +52,11 @@ export default function AuthModal({ open, onClose, defaultRole = null }) {
         await sendOTP(); // Existing user → send OTP directly
       }
     } catch (err) {
-      toast.error('Something went wrong');
+      if (err.code === 'ECONNABORTED') {
+        toast.error('Server is waking up, please try again in a moment');
+      } else {
+        toast.error(err.response?.data?.message || 'Something went wrong');
+      }
     } finally { setLoading(false); }
   };
 
