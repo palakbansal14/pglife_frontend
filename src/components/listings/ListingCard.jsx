@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Heart, MapPin, Star, Wifi, Wind, UtensilsCrossed, ShieldCheck, Users } from 'lucide-react';
+import { Heart, MapPin, Star, Wifi, Wind, UtensilsCrossed, ShieldCheck, Users, Lock } from 'lucide-react';
 import { useState } from 'react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
@@ -68,12 +68,17 @@ export default function ListingCard({ listing, onWishlistToggle, inWishlist: ini
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-semibold text-gray-900 text-base leading-snug mb-1 line-clamp-1 group-hover:text-brand-500 transition-colors">
-          {listing.title}
-        </h3>
+        {/* Title — locked until user opens & unlocks the listing */}
+        <div className="flex items-center gap-1.5 mb-1">
+          <div className="h-5 w-2/3 bg-gray-200 rounded animate-pulse" />
+          <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-medium flex-shrink-0">
+            <Lock size={9} /> Locked
+          </span>
+        </div>
+        {/* Location — only city visible, exact area hidden */}
         <div className="flex items-center gap-1 text-gray-500 text-sm mb-3">
           <MapPin size={13} className="text-brand-400 flex-shrink-0" />
-          <span className="line-clamp-1">{listing.locality}, {listing.city}</span>
+          <span className="line-clamp-1">{listing.city}</span>
         </div>
 
         {/* Amenities */}

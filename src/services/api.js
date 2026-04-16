@@ -7,7 +7,7 @@ const api = axios.create({
 
 // Attach token
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('pglife_token');
+  const token = sessionStorage.getItem('pglife_token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -17,8 +17,8 @@ api.interceptors.response.use(
   res => res,
   err => {
     if (err.response?.status === 401) {
-      localStorage.removeItem('pglife_token');
-      localStorage.removeItem('pglife_user');
+      sessionStorage.removeItem('pglife_token');
+      sessionStorage.removeItem('pglife_user');
     }
     return Promise.reject(err);
   }

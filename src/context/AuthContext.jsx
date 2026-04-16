@@ -5,20 +5,20 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('pglife_user');
+    const saved = sessionStorage.getItem('pglife_user');
     return saved ? JSON.parse(saved) : null;
   });
   const [loading, setLoading] = useState(false);
 
   const login = (token, userData) => {
-    localStorage.setItem('pglife_token', token);
-    localStorage.setItem('pglife_user', JSON.stringify(userData));
+    sessionStorage.setItem('pglife_token', token);
+    sessionStorage.setItem('pglife_user', JSON.stringify(userData));
     setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem('pglife_token');
-    localStorage.removeItem('pglife_user');
+    sessionStorage.removeItem('pglife_token');
+    sessionStorage.removeItem('pglife_user');
     setUser(null);
   };
 
@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data } = await api.get('/auth/me');
       const updated = data.user;
-      localStorage.setItem('pglife_user', JSON.stringify(updated));
+      sessionStorage.setItem('pglife_user', JSON.stringify(updated));
       setUser(updated);
     } catch {}
   };
